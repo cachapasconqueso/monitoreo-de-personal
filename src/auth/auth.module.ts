@@ -9,10 +9,15 @@ import { JwtStrategy } from './jwt.strategy';
   imports: [
     PassportModule,
     JwtModule.registerAsync({
-      useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'secret',
-        signOptions: { expiresIn: '7d' },
-      }),
+      useFactory: () => {
+        if (!process.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET no está configurado');
+        }
+        return {
+          secret: process.env.JWT_SECRET,
+          signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

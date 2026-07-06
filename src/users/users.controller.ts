@@ -13,14 +13,14 @@ export class UsersController {
 
   @Post()
   @Roles(Role.JEFE, Role.SUPERVISOR)
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(@Request() req, @Body() dto: CreateUserDto) {
+    return this.usersService.create(req.user, dto);
   }
 
   @Get()
   @Roles(Role.JEFE, Role.SUPERVISOR)
-  findAll(@Query('role') role?: string) {
-    return this.usersService.findAll(role);
+  findAll(@Request() req, @Query('role') role?: string) {
+    return this.usersService.findAll(req.user, role);
   }
 
   @Get('my-employees')
@@ -44,14 +44,14 @@ export class UsersController {
 
   @Get(':id')
   @Roles(Role.JEFE, Role.SUPERVISOR)
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Request() req, @Param('id') id: string) {
+    return this.usersService.findOne(req.user, id);
   }
 
   @Patch(':id')
   @Roles(Role.JEFE, Role.SUPERVISOR)
-  update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
-    return this.usersService.update(id, dto);
+  update(@Request() req, @Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
+    return this.usersService.update(req.user, id, dto);
   }
 
   @Delete(':id')

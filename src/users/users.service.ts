@@ -1,13 +1,26 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+
+interface Requester {
+  id: string;
+  role: string;
+}
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto) {
+  async create(requester: Requester, dto: CreateUserDto) {
+    if (requester.role === 'SUPERVISOR') {
+      if (dto.role && dto.role !== 'EMPLEADO') {
+        throw new ForbiddenException('Un supervisor solo puede crear empleados');
+      }
+      dto.role = 'EMPLEADO' as CreateUserDto['role'];
+      dto.supervisorId = requester.id;
+    }
+
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('El correo ya está registrado');
 
@@ -18,7 +31,11 @@ export class UsersService {
     });
   }
 
-  async findAll(role?: string) {
+  async findAll(requester: Requester, role?: string) {
+    if (requester.role === 'SUPERVISOR') {
+      return this.findEmployeesBySupervisor(requester.id);
+    }
+
     return this.prisma.user.findMany({
       where: { active: true, ...(role ? { role: role as any } : {}) },
       select: {
@@ -30,7 +47,7 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(requester: Requester, id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -41,6 +58,11 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    if (requester.role === 'SUPERVISOR' && user.supervisorId !== requester.id) {
+      throw new ForbiddenException('No puedes ver un usuario que no es tu empleado');
+    }
+
     return user;
   }
 
@@ -76,13 +98,26 @@ export class UsersService {
     });
   }
 
-  async update(id: string, data: Partial<CreateUserDto>) {
-    if (data.password) {
-      data.password = await bcrypt.hash(data.password, 10);
+  async update(requester: Requester, id: string, data: Partial<CreateUserDto>) {
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('Usuario no encontrado');
+
+    if (requester.role === 'SUPERVISOR') {
+      if (target.supervisorId !== requester.id) {
+        throw new ForbiddenException('Solo puedes editar a tus propios empleados');
+      }
+      if (data.role !== undefined || data.supervisorId !== undefined) {
+        throw new ForbiddenException('No tienes permiso para modificar ese campo');
+      }
+    }
+
+    const updateData: Partial<CreateUserDto> = { ...data };
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
     }
     return this.prisma.user.update({
       where: { id },
-      data,
+      data: updateData,
       select: { id: true, name: true, email: true, role: true, phone: true },
     });
   }
