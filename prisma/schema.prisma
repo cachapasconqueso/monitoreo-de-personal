@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  EMPLEADO
+  SUPERVISOR
+  JEFE
+}
+
+enum AttendanceStatus {
+  PENDING
+  ACTIVE
+  ON_LUNCH
+  COMPLETED
+}
+
+enum VisitStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(EMPLEADO)
+  phone     String?
+  avatarUrl       String?
+  active          Boolean   @default(true)
+  lastLat         Float?
+  lastLng         Float?
+  lastLocationAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attendances          Attendance[]
+  visits               Visit[]
+  assignedToEmployee   ClientAssignment[] @relation("employee")
+  assignedBySupervisor ClientAssignment[] @relation("supervisor")
+  supervisedBy         User?              @relation("SupervisorEmployee", fields: [supervisorId], references: [id])
+  supervisorId         String?
+  employees            User[]             @relation("SupervisorEmployee")
+
+  templatesAsEmployee   RouteTemplate[] @relation("templateEmployee")
+  templatesAsSupervisor RouteTemplate[] @relation("templateSupervisor")
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  date       DateTime         @db.Date
+  checkIn    DateTime?
+  checkOut   DateTime?
+  lunchStart DateTime?
+  lunchEnd   DateTime?
+  status         AttendanceStatus @default(PENDING)
+  notes          String?
+  workedMinutes  Int?
+  earlyDeparture Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  lat       Float
+  lng       Float
+  phone     String?
+  email     String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments          ClientAssignment[]
+  visits               Visit[]
+  routeTemplateClients RouteTemplateClient[]
+}
+
+model ClientAssignment {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id])
+  employeeId   String
+  employee     User     @relation("employee", fields: [employeeId], references: [id])
+  supervisorId String
+  supervisor   User     @relation("supervisor", fields: [supervisorId], references: [id])
+  date         DateTime @db.Date
+  order        Int      @default(0)
+  templateId   String?
+  template     RouteTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  visits Visit[]
+
+  @@unique([clientId, employeeId, date])
+}
+
+model RouteTemplate {
+  id           String    @id @default(cuid())
+  employeeId   String
+  employee     User      @relation("templateEmployee", fields: [employeeId], references: [id])
+  supervisorId String
+  supervisor   User      @relation("templateSupervisor", fields: [supervisorId], references: [id])
+  daysOfWeek   Int[]
+  startDate    DateTime  @db.Date
+  endDate      DateTime? @db.Date
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  clients     RouteTemplateClient[]
+  exceptions  RouteTemplateException[]
+  assignments ClientAssignment[]
+}
+
+model RouteTemplateClient {
+  id         String        @id @default(cuid())
+  templateId String
+  template   RouteTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client        @relation(fields: [clientId], references: [id])
+  order      Int           @default(0)
+}
+
+model RouteTemplateException {
+  id         String        @id @default(cuid())
+  templateId String
+  template   RouteTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  date       DateTime      @db.Date
+
+  @@unique([templateId, date])
+}
+
+model Visit {
+  id           String            @id @default(cuid())
+  employeeId   String
+  employee     User              @relation(fields: [employeeId], references: [id])
+  clientId     String
+  client       Client            @relation(fields: [clientId], references: [id])
+  assignmentId String?
+  assignment   ClientAssignment? @relation(fields: [assignmentId], references: [id])
+  date         DateTime          @db.Date
+  checkIn      DateTime?
+  checkOut     DateTime?
+  comment      String?
+  status       VisitStatus       @default(PENDING)
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
