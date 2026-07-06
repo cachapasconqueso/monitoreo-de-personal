@@ -36,8 +36,8 @@ export default function Login() {
 
       <main className="w-full max-w-md z-10 relative">
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-16 h-16 bg-primary text-on-primary rounded-xl flex items-center justify-center mb-4 shadow-[0_4px_12px_rgba(13,22,40,0.12)]">
-            <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>fingerprint</span>
+          <div className="w-8 h-8 bg-primary text-on-primary rounded-lg flex items-center justify-center mb-4 shadow-[0_4px_12px_rgba(13,22,40,0.12)]">
+            <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>fingerprint</span>
           </div>
           <h1 className="text-3xl font-bold text-primary tracking-tight">Geopoint</h1>
           <p className="text-on-surface-variant mt-2">Sistema de Monitoreo de Personal</p>
