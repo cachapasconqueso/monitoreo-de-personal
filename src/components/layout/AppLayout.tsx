@@ -16,7 +16,7 @@ export default function AppLayout({ children, navItems, accentColor }: AppLayout
     <div className="flex bg-background min-h-screen">
       <TopNav />
       <SideNav items={navItems} accentColor={accentColor} />
-      <main className="flex-1 w-full md:ml-64 pt-6 md:pt-20 px-4 md:px-8 pb-24 md:pb-8">
+      <main className="flex-1 w-full md:ml-64 pt-20 px-4 md:px-8 pb-24 md:pb-8">
         {children}
       </main>
       <BottomNav items={navItems} />
