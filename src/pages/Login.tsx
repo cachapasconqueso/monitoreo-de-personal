@@ -107,10 +107,6 @@ export default function Login() {
             </button>
           </form>
         </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-xs font-mono text-outline">Powered by TEC CUENCA · v1.0.0</p>
-        </div>
       </main>
     </div>
   );
