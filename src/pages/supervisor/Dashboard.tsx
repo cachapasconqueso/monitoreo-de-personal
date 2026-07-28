@@ -26,6 +26,7 @@ const statusIcon = (status: string) =>
 interface TeamMember {
   id: string; checkIn: string | null; checkOut: string | null;
   lunchStart: string | null; lunchEnd: string | null; status: string; workedMinutes: number | null; earlyDeparture: boolean;
+  scheduledToday: boolean;
   user: { id: string; name: string; email: string; role: string; avatarUrl: string | null };
 }
 
@@ -84,7 +85,7 @@ export default function SupervisorDashboard() {
   }, []);
 
   const present = team.filter((t) => t.status === 'ACTIVE' || t.status === 'ON_LUNCH' || t.status === 'COMPLETED');
-  const absent = team.filter((t) => !t.checkIn);
+  const absent = team.filter((t) => t.scheduledToday && !t.checkIn);
   const pendingAssignments = assignments.filter((a) => !a.visits || a.visits.length === 0);
   const commentedVisits = recentVisits.filter((v) => v.comment).slice(0, 6);
 
@@ -267,7 +268,7 @@ export default function SupervisorDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-on-surface truncate">{m.user.name}</p>
                   <p className="text-xs text-on-surface-variant">
-                    {m.checkIn ? `Entrada: ${format(new Date(m.checkIn), 'HH:mm')}` : 'Sin registro'}
+                    {m.checkIn ? `Entrada: ${format(new Date(m.checkIn), 'HH:mm')}` : m.scheduledToday ? 'Sin registro' : 'Sin horario hoy'}
                     {m.workedMinutes ? ` · ${minutesToHM(m.workedMinutes)}` : ''}
                   </p>
                   {(m.lunchStart || m.lunchEnd) && (
@@ -279,7 +280,7 @@ export default function SupervisorDashboard() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className={`w-2.5 h-2.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite' : m.status === 'ON_LUNCH' ? 'bg-status-late' : m.status === 'COMPLETED' ? 'bg-outline' : 'bg-status-absent'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite' : m.status === 'ON_LUNCH' ? 'bg-status-late' : m.status === 'COMPLETED' ? 'bg-outline' : m.scheduledToday ? 'bg-status-absent' : 'bg-outline-variant'}`} />
                   {m.earlyDeparture && (
                     <span className="material-symbols-outlined text-status-late text-sm" title="Salida temprana">running_with_errors</span>
                   )}
