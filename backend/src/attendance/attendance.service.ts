@@ -142,6 +142,7 @@ export class AttendanceService {
 
   async getTeamAttendance(date?: string, supervisorId?: string) {
     const d = date ? parseDateOnly(date) : this.todayDate();
+    const dayOfWeek = businessDayOfWeek(d);
 
     const employees = await this.prisma.user.findMany({
       where: { role: 'EMPLEADO', active: true, ...(supervisorId ? { supervisorId } : {}) },
@@ -154,8 +155,17 @@ export class AttendanceService {
     });
     const byUserId = new Map(records.map((r) => [r.userId, r]));
 
+    const schedules = await this.prisma.workSchedule.findMany({
+      where: { employeeId: { in: employees.map((e) => e.id) } },
+    });
+    const scheduledToday = new Set(
+      schedules.filter((s) => s.daysOfWeek.includes(dayOfWeek)).map((s) => s.employeeId),
+    );
+
     // Se incluye a todo el equipo, incluso a quienes no tienen registro ese día,
     // para que quien nunca marcó entrada aparezca como ausente en vez de desaparecer del panel.
+    // Solo cuenta como "ausente" quien tenía horario asignado para hoy y no marcó: sin
+    // horario configurado no hay nada contra qué comparar, así que no se le puede tildar de ausente.
     return employees.map((user) => {
       const r = byUserId.get(user.id);
       return {
@@ -168,6 +178,7 @@ export class AttendanceService {
         workedMinutes: r?.workedMinutes ?? null,
         earlyDeparture: r?.earlyDeparture ?? false,
         late: r?.late ?? false,
+        scheduledToday: scheduledToday.has(user.id),
         user,
       };
     });
