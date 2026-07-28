@@ -2,6 +2,7 @@ import { Injectable, ConflictException, ForbiddenException, NotFoundException } 
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateWorkScheduleDto } from './dto/work-schedule.dto';
 
 interface Requester {
   id: string;
@@ -69,7 +70,9 @@ export class UsersService {
   async findEmployeesBySupervisor(supervisorId: string) {
     return this.prisma.user.findMany({
       where: { supervisorId, active: true },
-      select: { id: true, name: true, email: true, role: true, phone: true, avatarUrl: true },
+      select: {
+        id: true, name: true, email: true, role: true, phone: true, avatarUrl: true,
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -124,5 +127,33 @@ export class UsersService {
 
   async deactivate(id: string) {
     return this.prisma.user.update({ where: { id }, data: { active: false } });
+  }
+
+  private async assertOwnsEmployee(requester: Requester, employeeId: string) {
+    if (requester.role !== 'SUPERVISOR') return;
+    const employee = await this.prisma.user.findUnique({ where: { id: employeeId } });
+    if (!employee || employee.supervisorId !== requester.id) {
+      throw new ForbiddenException('No puedes gestionar el horario de un empleado que no es tuyo');
+    }
+  }
+
+  async getSchedules(requester: Requester, employeeId: string) {
+    await this.assertOwnsEmployee(requester, employeeId);
+    return this.prisma.workSchedule.findMany({
+      where: { employeeId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addSchedule(requester: Requester, employeeId: string, dto: CreateWorkScheduleDto) {
+    await this.assertOwnsEmployee(requester, employeeId);
+    return this.prisma.workSchedule.create({ data: { employeeId, ...dto } });
+  }
+
+  async removeSchedule(requester: Requester, scheduleId: string) {
+    const schedule = await this.prisma.workSchedule.findUnique({ where: { id: scheduleId } });
+    if (!schedule) throw new NotFoundException('Horario no encontrado');
+    await this.assertOwnsEmployee(requester, schedule.employeeId);
+    return this.prisma.workSchedule.delete({ where: { id: scheduleId } });
   }
 }

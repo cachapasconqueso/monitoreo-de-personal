@@ -51,6 +51,19 @@ model User {
 
   templatesAsEmployee   RouteTemplate[] @relation("templateEmployee")
   templatesAsSupervisor RouteTemplate[] @relation("templateSupervisor")
+
+  workSchedules WorkSchedule[]
+}
+
+model WorkSchedule {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  daysOfWeek Int[]
+  startTime  String
+  endTime    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Attendance {
@@ -66,6 +79,7 @@ model Attendance {
   notes          String?
   workedMinutes  Int?
   earlyDeparture Boolean          @default(false)
+  late           Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

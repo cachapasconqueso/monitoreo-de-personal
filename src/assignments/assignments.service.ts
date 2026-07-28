@@ -1,38 +1,30 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssignmentDto, CreateRouteTemplateDto } from './dto/assignment.dto';
+import { toBusinessDateOnly, parseDateOnly, formatDateOnly, mondayOfUTC, addDaysUTC } from '../common/business-date.util';
 
 @Injectable()
 export class AssignmentsService {
   constructor(private prisma: PrismaService) {}
 
   private parseDate(dateStr: string): Date {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    return parseDateOnly(dateStr);
   }
 
   private todayDate(): Date {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return toBusinessDateOnly();
   }
 
   private formatDate(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatDateOnly(d);
   }
 
   private mondayOf(date: Date): Date {
-    const day = date.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(date);
-    monday.setDate(date.getDate() + diff);
-    return monday;
+    return mondayOfUTC(date);
   }
 
   private async materializeForDate(dayStart: Date) {
-    const dayOfWeek = dayStart.getDay();
+    const dayOfWeek = dayStart.getUTCDay();
 
     const templates = await this.prisma.routeTemplate.findMany({
       where: {
@@ -120,7 +112,7 @@ export class AssignmentsService {
       include: { clients: { include: { client: true } } },
     });
 
-    if (dto.daysOfWeek.includes(startDate.getDay())) {
+    if (dto.daysOfWeek.includes(startDate.getUTCDay())) {
       await this.materializeForDate(startDate);
     }
 
@@ -168,8 +160,7 @@ export class AssignmentsService {
 
     const days: { date: string; dayOfWeek: number; assignments: any[] }[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
+      const d = addDaysUTC(monday, i);
       await this.materializeForDate(d);
 
       const dayAssignments = await this.prisma.clientAssignment.findMany({
@@ -183,7 +174,7 @@ export class AssignmentsService {
 
       days.push({
         date: this.formatDate(d),
-        dayOfWeek: d.getDay(),
+        dayOfWeek: d.getUTCDay(),
         assignments: dayAssignments,
       });
     }

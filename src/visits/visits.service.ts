@@ -1,18 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInVisitDto, CheckOutVisitDto } from './dto/visit.dto';
+import { toBusinessDateOnly, parseDateOnly } from '../common/business-date.util';
 
 @Injectable()
 export class VisitsService {
   constructor(private prisma: PrismaService) {}
 
-  private todayDate() {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
-
   async checkIn(employeeId: string, dto: CheckInVisitDto) {
-    const date = this.todayDate();
+    const date = toBusinessDateOnly();
     const now = dto.timestamp ? new Date(dto.timestamp) : new Date();
 
     const existing = await this.prisma.visit.findFirst({
@@ -49,7 +45,7 @@ export class VisitsService {
   }
 
   async getMyTodayVisits(employeeId: string) {
-    const date = this.todayDate();
+    const date = toBusinessDateOnly();
     return this.prisma.visit.findMany({
       where: { employeeId, date },
       include: { client: true },
@@ -61,7 +57,7 @@ export class VisitsService {
     return this.prisma.visit.findMany({
       where: {
         employeeId,
-        ...(from && to ? { date: { gte: new Date(from), lte: new Date(to) } } : {}),
+        ...(from && to ? { date: { gte: parseDateOnly(from), lte: parseDateOnly(to) } } : {}),
       },
       include: { client: true },
       orderBy: { date: 'desc' },
@@ -69,14 +65,30 @@ export class VisitsService {
     });
   }
 
-  async getAllVisits(date?: string, employeeId?: string) {
-    const d = date ? new Date(date) : undefined;
-    const dayStart = d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : undefined;
+  async assertEmployeeOwnership(requester: { id: string; role: string }, employeeId: string) {
+    if (requester.role !== 'SUPERVISOR') return;
+    const employee = await this.prisma.user.findUnique({ where: { id: employeeId } });
+    if (!employee || employee.supervisorId !== requester.id) {
+      throw new NotFoundException('Empleado no encontrado');
+    }
+  }
+
+  async getAllVisits(
+    requester: { id: string; role: string },
+    date?: string,
+    employeeId?: string,
+    from?: string,
+    to?: string,
+  ) {
+    const dayStart = date ? parseDateOnly(date) : undefined;
+    const supervisorScope = requester.role === 'SUPERVISOR' ? { supervisorId: requester.id } : {};
 
     return this.prisma.visit.findMany({
       where: {
         ...(dayStart ? { date: dayStart } : {}),
+        ...(!dayStart && from && to ? { date: { gte: new Date(from), lte: new Date(to) } } : {}),
         ...(employeeId ? { employeeId } : {}),
+        employee: supervisorScope,
       },
       include: {
         client: true,

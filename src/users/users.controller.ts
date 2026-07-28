@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateWorkScheduleDto } from './dto/work-schedule.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -40,6 +41,24 @@ export class UsersController {
   teamLocations(@Request() req, @Query('supervisorId') supervisorId?: string) {
     const id = req.user.role === 'SUPERVISOR' ? req.user.id : supervisorId;
     return this.usersService.getTeamLocations(id);
+  }
+
+  @Get(':id/schedules')
+  @Roles(Role.JEFE, Role.SUPERVISOR)
+  getSchedules(@Request() req, @Param('id') id: string) {
+    return this.usersService.getSchedules(req.user, id);
+  }
+
+  @Post(':id/schedules')
+  @Roles(Role.JEFE, Role.SUPERVISOR)
+  addSchedule(@Request() req, @Param('id') id: string, @Body() dto: CreateWorkScheduleDto) {
+    return this.usersService.addSchedule(req.user, id, dto);
+  }
+
+  @Delete('schedules/:scheduleId')
+  @Roles(Role.JEFE, Role.SUPERVISOR)
+  removeSchedule(@Request() req, @Param('scheduleId') scheduleId: string) {
+    return this.usersService.removeSchedule(req.user, scheduleId);
   }
 
   @Get(':id')

@@ -37,18 +37,26 @@ export class VisitsController {
 
   @Get('by-employee/:employeeId')
   @Roles(Role.SUPERVISOR, Role.JEFE)
-  byEmployee(
+  async byEmployee(
+    @Request() req,
     @Param('employeeId') employeeId: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
+    await this.service.assertEmployeeOwnership(req.user, employeeId);
     return this.service.getVisitsByEmployee(employeeId, from, to);
   }
 
   @Get('all')
   @Roles(Role.SUPERVISOR, Role.JEFE)
-  all(@Query('date') date?: string, @Query('employeeId') employeeId?: string) {
-    return this.service.getAllVisits(date, employeeId);
+  all(
+    @Request() req,
+    @Query('date') date?: string,
+    @Query('employeeId') employeeId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.service.getAllVisits(req.user, date, employeeId, from, to);
   }
 
   @Patch(':id/comment')

@@ -47,19 +47,28 @@ export class AttendanceController {
 
   @Get('team')
   @Roles(Role.SUPERVISOR, Role.JEFE)
-  team(@Query('date') date?: string) {
-    return this.service.getTeamAttendance(date);
+  team(@Request() req, @Query('date') date?: string) {
+    const supervisorId = req.user.role === 'SUPERVISOR' ? req.user.id : undefined;
+    return this.service.getTeamAttendance(date, supervisorId);
   }
 
   @Get('early-departures')
   @Roles(Role.SUPERVISOR, Role.JEFE)
-  earlyDepartures(@Query('date') date?: string) {
-    return this.service.getEarlyDepartures(date);
+  earlyDepartures(@Request() req, @Query('date') date?: string) {
+    const supervisorId = req.user.role === 'SUPERVISOR' ? req.user.id : undefined;
+    return this.service.getEarlyDepartures(date, supervisorId);
+  }
+
+  @Get('incomplete-routes')
+  @Roles(Role.SUPERVISOR, Role.JEFE)
+  incompleteRoutes(@Request() req, @Query('date') date?: string) {
+    const supervisorId = req.user.role === 'SUPERVISOR' ? req.user.id : undefined;
+    return this.service.getIncompleteRoutes(date, supervisorId);
   }
 
   @Get('all')
-  @Roles(Role.JEFE)
-  all(@Query('userId') userId?: string, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.service.getAllAttendance(userId, from, to);
+  @Roles(Role.SUPERVISOR, Role.JEFE)
+  all(@Request() req, @Query('userId') userId?: string, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.service.getAllAttendance(req.user, userId, from, to);
   }
 }
