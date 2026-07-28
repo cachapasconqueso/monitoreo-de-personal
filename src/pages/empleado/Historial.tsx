@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as attendanceApi from '../../api/attendance';
 import * as visitsApi from '../../api/visits';
+import { dateOnlyToLocal } from '../../lib/date';
 
 interface Attendance {
   id: string;
@@ -40,7 +41,7 @@ export default function EmpleadoHistorial() {
   }, []);
 
   const fmt = (d: string | null) => d ? format(new Date(d), 'HH:mm') : '--:--';
-  const fmtDate = (d: string) => format(new Date(d), "EEE dd/MM", { locale: es });
+  const fmtDate = (d: string) => format(dateOnlyToLocal(d), "EEE dd/MM", { locale: es });
 
   if (loading) {
     return (
@@ -81,7 +82,7 @@ export default function EmpleadoHistorial() {
             <div key={a.id} className="card p-4 flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="shrink-0">
                 <p className="text-sm font-bold font-mono text-on-surface capitalize">{fmtDate(a.date)}</p>
-                <p className="text-xs text-on-surface-variant">{format(new Date(a.date), 'yyyy')}</p>
+                <p className="text-xs text-on-surface-variant">{format(dateOnlyToLocal(a.date), 'yyyy')}</p>
               </div>
               <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
                 <div className="bg-surface-container p-2 rounded-lg">

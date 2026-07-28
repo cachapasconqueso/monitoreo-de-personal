@@ -11,8 +11,11 @@ export const getTodayVisits = () => api.get('/visits/today').then((r) => r.data)
 export const getMyVisitHistory = (from?: string, to?: string) =>
   api.get('/visits/my-history', { params: { from, to } }).then((r) => r.data);
 
-export const getAllVisits = (date?: string, employeeId?: string) =>
-  api.get('/visits/all', { params: { date, employeeId } }).then((r) => r.data);
+export const getAllVisits = (date?: string, employeeId?: string, from?: string, to?: string) =>
+  api.get('/visits/all', { params: { date, employeeId, from, to } }).then((r) => r.data);
+
+export const getVisitsByEmployeeRange = (employeeId: string, from?: string, to?: string) =>
+  api.get(`/visits/by-employee/${employeeId}`, { params: { from, to } }).then((r) => r.data);
 
 export const updateVisitComment = (visitId: string, comment: string) =>
   api.patch(`/visits/${visitId}/comment`, { comment }).then((r) => r.data);

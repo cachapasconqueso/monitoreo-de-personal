@@ -11,6 +11,8 @@ export const getTeamAttendance = (date?: string) =>
   api.get('/attendance/team', { params: { date } }).then((r) => r.data);
 export const getEarlyDepartures = (date?: string) =>
   api.get('/attendance/early-departures', { params: { date } }).then((r) => r.data);
+export const getIncompleteRoutes = (date?: string) =>
+  api.get('/attendance/incomplete-routes', { params: { date } }).then((r) => r.data);
 
 export const getAllAttendance = (userId?: string, from?: string, to?: string) =>
   api.get('/attendance/all', { params: { userId, from, to } }).then((r) => r.data);

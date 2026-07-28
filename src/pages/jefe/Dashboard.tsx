@@ -9,6 +9,8 @@ interface TeamMember {
   id: string;
   checkIn: string | null;
   checkOut: string | null;
+  lunchStart: string | null;
+  lunchEnd: string | null;
   status: string;
   user: { id: string; name: string; role: string; avatarUrl: string | null };
 }
@@ -139,6 +141,13 @@ export default function JefeDashboard() {
                     <p className="text-xs font-mono text-on-surface-variant">
                       {m.checkIn ? `${format(new Date(m.checkIn), 'HH:mm')} → ${m.checkOut ? format(new Date(m.checkOut), 'HH:mm') : 'activo'}` : 'Sin entrada'}
                     </p>
+                    {(m.lunchStart || m.lunchEnd) && (
+                      <p className="text-xs font-mono text-status-late">
+                        Almuerzo: {m.lunchStart ? format(new Date(m.lunchStart), 'HH:mm') : '--'}
+                        {' → '}
+                        {m.lunchEnd ? format(new Date(m.lunchEnd), 'HH:mm') : 'en curso'}
+                      </p>
+                    )}
                   </div>
                   <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite/20 text-on-surface' : m.status === 'COMPLETED' ? 'bg-surface-container text-on-surface-variant' : m.status === 'ON_LUNCH' ? 'bg-status-late/20 text-on-surface' : 'bg-status-absent/20 text-on-surface'}`}>
                     {m.status === 'ACTIVE' ? 'ACTIVO' : m.status === 'COMPLETED' ? 'TERMINÓ' : m.status === 'ON_LUNCH' ? 'ALMUERZO' : 'AUSENTE'}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/auth';
 import * as usersApi from '../../api/users';
+import EmployeeProfileModal from '../../components/supervisor/EmployeeProfileModal';
 
 interface User {
   id: string;
@@ -22,6 +23,7 @@ export default function SupervisorUsuarios() {
   const [showPass, setShowPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [profileEmployee, setProfileEmployee] = useState<User | null>(null);
 
   const load = () =>
     usersApi.getMyEmployees()
@@ -92,7 +94,11 @@ export default function SupervisorUsuarios() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {employees.map((emp) => (
-            <div key={emp.id} className="card p-4 flex items-center gap-4">
+            <button
+              key={emp.id}
+              onClick={() => setProfileEmployee(emp)}
+              className="card p-4 flex items-center gap-4 text-left hover:border-secondary/50 transition-colors"
+            >
               <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold text-lg shrink-0">
                 {emp.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
@@ -107,7 +113,7 @@ export default function SupervisorUsuarios() {
                 )}
               </div>
               <span className="status-chip-onsite shrink-0">Activo</span>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -219,6 +225,10 @@ export default function SupervisorUsuarios() {
             </div>
           </div>
         </div>
+      )}
+
+      {profileEmployee && (
+        <EmployeeProfileModal employee={profileEmployee} onClose={() => setProfileEmployee(null)} />
       )}
     </div>
   );

@@ -13,6 +13,7 @@ import SupervisorDashboard from './pages/supervisor/Dashboard';
 import SupervisorAsignaciones from './pages/supervisor/Asignaciones';
 import SupervisorClientes from './pages/supervisor/Clientes';
 import SupervisorUsuarios from './pages/supervisor/Usuarios';
+import SupervisorReportes from './pages/supervisor/Reportes';
 import JefeLayout from './pages/jefe/JefeLayout';
 import JefeDashboard from './pages/jefe/Dashboard';
 import JefeReportes from './pages/jefe/Reportes';
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="usuarios" element={<SupervisorUsuarios />} />
           <Route path="asignaciones" element={<SupervisorAsignaciones />} />
           <Route path="clientes" element={<SupervisorClientes />} />
+          <Route path="reportes" element={<SupervisorReportes />} />
         </Route>
 
         <Route path="/jefe" element={<ProtectedRoute allowedRoles={['JEFE']}><JefeLayout /></ProtectedRoute>}>

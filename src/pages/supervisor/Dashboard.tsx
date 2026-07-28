@@ -6,6 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import * as attendanceApi from '../../api/attendance';
 import * as assignmentsApi from '../../api/assignments';
 import * as usersApi from '../../api/users';
+import * as visitsApi from '../../api/visits';
+import { isVisitOffSite } from '../../lib/metrics';
+import { dateOnlyToLocal } from '../../lib/date';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -22,13 +25,19 @@ const statusIcon = (status: string) =>
 
 interface TeamMember {
   id: string; checkIn: string | null; checkOut: string | null;
-  lunchStart: string | null; status: string; workedMinutes: number | null; earlyDeparture: boolean;
+  lunchStart: string | null; lunchEnd: string | null; status: string; workedMinutes: number | null; earlyDeparture: boolean;
   user: { id: string; name: string; email: string; role: string; avatarUrl: string | null };
 }
 
 interface EarlyAlert {
   id: string; checkOut: string; workedMinutes: number;
   user: { id: string; name: string; supervisedBy: { name: string } | null };
+}
+
+interface IncompleteRouteAlert {
+  checkOut: string; totalAssigned: number;
+  user: { id: string; name: string; avatarUrl: string | null };
+  pendingClients: { id: string; name: string }[];
 }
 
 interface EmployeeLocation {
@@ -52,7 +61,9 @@ export default function SupervisorDashboard() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [earlyAlerts, setEarlyAlerts] = useState<EarlyAlert[]>([]);
+  const [incompleteRouteAlerts, setIncompleteRouteAlerts] = useState<IncompleteRouteAlert[]>([]);
   const [empLocations, setEmpLocations] = useState<EmployeeLocation[]>([]);
+  const [recentVisits, setRecentVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -61,7 +72,9 @@ export default function SupervisorDashboard() {
     assignmentsApi.getBySupervisor(today),
     attendanceApi.getEarlyDepartures(today),
     usersApi.getTeamLocations(),
-  ]).then(([t, a, e, locs]) => { setTeam(t); setAssignments(a); setEarlyAlerts(e); setEmpLocations(locs); });
+    visitsApi.getAllVisits(),
+    attendanceApi.getIncompleteRoutes(today),
+  ]).then(([t, a, e, locs, v, ir]) => { setTeam(t); setAssignments(a); setEarlyAlerts(e); setEmpLocations(locs); setRecentVisits(v); setIncompleteRouteAlerts(ir); });
 
   useEffect(() => {
     loadData().finally(() => setLoading(false));
@@ -72,11 +85,14 @@ export default function SupervisorDashboard() {
 
   const present = team.filter((t) => t.status === 'ACTIVE' || t.status === 'ON_LUNCH' || t.status === 'COMPLETED');
   const absent = team.filter((t) => !t.checkIn);
+  const pendingAssignments = assignments.filter((a) => !a.visits || a.visits.length === 0);
+  const commentedVisits = recentVisits.filter((v) => v.comment).slice(0, 6);
 
   const kpis = [
     { label: 'Equipo Total', value: team.length, icon: 'groups', color: 'border-primary-fixed-dim' },
     { label: 'Presentes', value: present.length, icon: 'where_to_vote', color: 'border-status-onsite', textColor: 'text-status-onsite' },
     { label: 'Ausentes', value: absent.length, icon: 'person_off', color: 'border-status-absent', textColor: 'text-status-absent' },
+    { label: 'Visitas Pendientes', value: pendingAssignments.length, icon: 'pending_actions', color: 'border-secondary', textColor: 'text-secondary' },
     { label: 'Salidas Tempranas', value: earlyAlerts.length, icon: 'running_with_errors', color: 'border-status-late', textColor: 'text-status-late' },
   ];
 
@@ -140,8 +156,41 @@ export default function SupervisorDashboard() {
         </div>
       )}
 
+      {/* Alerta de rutas incompletas al finalizar jornada */}
+      {incompleteRouteAlerts.length > 0 && (
+        <div className="bg-error/10 border border-error/50 rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-error text-2xl">report</span>
+            <div>
+              <p className="font-bold text-on-surface">
+                {incompleteRouteAlerts.length === 1
+                  ? '1 colaborador finalizó su jornada sin completar la ruta'
+                  : `${incompleteRouteAlerts.length} colaboradores finalizaron su jornada sin completar la ruta`}
+              </p>
+              <p className="text-xs text-on-surface-variant">Marcaron salida con clientes pendientes por visitar</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            {incompleteRouteAlerts.map((a) => (
+              <div key={a.user.id} className="bg-surface rounded-lg p-3 flex items-center gap-3 border border-error/30">
+                <div className="w-9 h-9 rounded-full bg-error/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-error text-lg">person</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-on-surface">{a.user.name}</p>
+                  <p className="text-xs text-on-surface-variant">
+                    Salió a las {format(new Date(a.checkOut), 'HH:mm')} · {a.pendingClients.length} de {a.totalAssigned} clientes sin visitar
+                  </p>
+                  <p className="text-xs text-on-surface-variant truncate">{a.pendingClients.map((c) => c.name).join(', ')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {kpis.map((k) => (
           <div key={k.label} className={`card p-4 flex flex-col justify-between h-28 border-b-2 ${k.color}`}>
             <p className="text-sm text-on-surface-variant">{k.label}</p>
@@ -221,6 +270,13 @@ export default function SupervisorDashboard() {
                     {m.checkIn ? `Entrada: ${format(new Date(m.checkIn), 'HH:mm')}` : 'Sin registro'}
                     {m.workedMinutes ? ` · ${minutesToHM(m.workedMinutes)}` : ''}
                   </p>
+                  {(m.lunchStart || m.lunchEnd) && (
+                    <p className="text-xs text-status-late font-mono">
+                      Almuerzo: {m.lunchStart ? format(new Date(m.lunchStart), 'HH:mm') : '--'}
+                      {' → '}
+                      {m.lunchEnd ? format(new Date(m.lunchEnd), 'HH:mm') : 'en curso'}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`w-2.5 h-2.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite' : m.status === 'ON_LUNCH' ? 'bg-status-late' : m.status === 'COMPLETED' ? 'bg-outline' : 'bg-status-absent'}`} />
@@ -228,6 +284,62 @@ export default function SupervisorDashboard() {
                     <span className="material-symbols-outlined text-status-late text-sm" title="Salida temprana">running_with_errors</span>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Visitas Pendientes + Comentarios Recientes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card flex flex-col h-[340px]">
+          <div className="p-4 border-b border-border-subtle/10 flex items-center justify-between">
+            <h2 className="font-bold text-lg text-secondary">Visitas Pendientes Hoy</h2>
+            {pendingAssignments.length > 0 && (
+              <span className="text-xs font-mono font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">{pendingAssignments.length}</span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {pendingAssignments.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full gap-2 text-on-surface-variant">
+                <span className="material-symbols-outlined text-4xl opacity-30">task_alt</span>
+                <p className="text-sm">Todas las rutas del día están cubiertas</p>
+              </div>
+            )}
+            {pendingAssignments.map((a) => (
+              <div key={a.id} className="p-3 bg-surface rounded-lg border border-outline-variant/30 flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary shrink-0">store</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-on-surface truncate">{a.client.name}</p>
+                  <p className="text-xs text-on-surface-variant truncate">{a.employee?.name}</p>
+                </div>
+                <span className="status-chip-pending shrink-0">Pendiente</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card flex flex-col h-[340px]">
+          <div className="p-4 border-b border-border-subtle/10">
+            <h2 className="font-bold text-lg text-primary">Comentarios Recientes de Visitas</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {commentedVisits.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full gap-2 text-on-surface-variant">
+                <span className="material-symbols-outlined text-4xl opacity-30">chat</span>
+                <p className="text-sm">Sin comentarios recientes</p>
+              </div>
+            )}
+            {commentedVisits.map((v) => (
+              <div key={v.id} className="p-3 bg-surface rounded-lg border border-outline-variant/30">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-on-surface truncate">{v.employee.name} · {v.client.name}</p>
+                  {isVisitOffSite(v, v.client) && (
+                    <span className="text-xs text-status-late shrink-0" title="Check-in fuera del sitio del cliente">📍⚠</span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1">{v.comment}</p>
+                <p className="text-[10px] font-mono text-on-surface-variant/60 mt-1">{format(dateOnlyToLocal(v.date), 'dd/MM/yyyy')}</p>
               </div>
             ))}
           </div>

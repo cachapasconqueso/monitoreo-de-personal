@@ -12,6 +12,7 @@ export default function SupervisorClientes() {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [pinPos, setPinPos] = useState<PinPos | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ export default function SupervisorClientes() {
     if (!form.address) { toast.error('La dirección es obligatoria'); return; }
     setSaving(true);
     try {
-      await clientsApi.createClient({
+      const payload = {
         name: form.name,
         address: form.address,
         lat: pinPos.lat,
@@ -46,17 +47,34 @@ export default function SupervisorClientes() {
         phone: form.phone || undefined,
         email: form.email || undefined,
         notes: form.notes || undefined,
-      });
-      toast.success('Cliente creado');
-      setShowForm(false);
-      setForm(emptyForm);
-      setPinPos(null);
+      };
+      if (editingId) {
+        await clientsApi.updateClient(editingId, payload);
+        toast.success('Cliente actualizado');
+      } else {
+        await clientsApi.createClient(payload);
+        toast.success('Cliente creado');
+      }
+      closeForm();
       loadClients(search || undefined);
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al crear');
+      toast.error(e.response?.data?.message || 'Error al guardar');
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEditForm = (client: Client) => {
+    setEditingId(client.id);
+    setForm({
+      name: client.name,
+      address: client.address,
+      phone: client.phone || '',
+      email: client.email || '',
+      notes: client.notes || '',
+    });
+    setPinPos({ lat: client.lat, lng: client.lng });
+    setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -68,7 +86,7 @@ export default function SupervisorClientes() {
     } catch { toast.error('Error al eliminar'); }
   };
 
-  const closeForm = () => { setShowForm(false); setForm(emptyForm); setPinPos(null); };
+  const closeForm = () => { setShowForm(false); setEditingId(null); setForm(emptyForm); setPinPos(null); };
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-role-supervisor border-t-transparent rounded-full" /></div>;
@@ -115,9 +133,14 @@ export default function SupervisorClientes() {
               {c.phone && <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1"><span className="material-symbols-outlined text-sm">call</span>{c.phone}</p>}
               <p className="text-xs font-mono text-on-surface-variant/60 mt-1">{c.lat.toFixed(4)}, {c.lng.toFixed(4)}</p>
             </div>
-            <button onClick={() => handleDelete(c.id)} className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors h-fit shrink-0">
-              <span className="material-symbols-outlined text-xl">delete</span>
-            </button>
+            <div className="flex flex-col gap-1 shrink-0">
+              <button onClick={() => openEditForm(c)} className="p-1.5 text-secondary hover:bg-secondary/10 rounded-lg transition-colors" title="Editar ubicación y datos">
+                <span className="material-symbols-outlined text-xl">edit_location_alt</span>
+              </button>
+              <button onClick={() => handleDelete(c.id)} className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors" title="Eliminar cliente">
+                <span className="material-symbols-outlined text-xl">delete</span>
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -128,8 +151,10 @@ export default function SupervisorClientes() {
           <div className="card p-6 w-full max-w-lg my-4">
             <div className="flex justify-between items-center mb-5">
               <div>
-                <h3 className="font-bold text-lg text-on-surface">Nuevo Cliente</h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">Coloca el pin en el mapa para la ubicación exacta</p>
+                <h3 className="font-bold text-lg text-on-surface">{editingId ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {editingId ? 'Ajusta el pin en el mapa si la ubicación no es correcta' : 'Coloca el pin en el mapa para la ubicación exacta'}
+                </p>
               </div>
               <button onClick={closeForm} className="text-on-surface-variant hover:text-on-surface transition-colors">
                 <span className="material-symbols-outlined">close</span>
@@ -155,7 +180,7 @@ export default function SupervisorClientes() {
                   Ubicación en mapa *
                   <span className="ml-2 text-secondary normal-case font-normal">Busca o toca el mapa para colocar el pin</span>
                 </label>
-                <MapPicker value={pinPos} onChange={handlePinChange} />
+                <MapPicker value={pinPos} onChange={handlePinChange} initialCenter={editingId && pinPos ? [pinPos.lat, pinPos.lng] : undefined} />
               </div>
 
               {/* Dirección (se llena sola al pinear, editable) */}
@@ -191,7 +216,7 @@ export default function SupervisorClientes() {
               <button onClick={closeForm} className="flex-1 btn-secondary">Cancelar</button>
               <button onClick={handleSave} disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
                 {saving && <div className="animate-spin h-4 w-4 border-2 border-on-primary border-t-transparent rounded-full" />}
-                Guardar Cliente
+                {editingId ? 'Guardar Cambios' : 'Guardar Cliente'}
               </button>
             </div>
           </div>

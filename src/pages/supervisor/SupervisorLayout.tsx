@@ -6,6 +6,7 @@ const navItems = [
   { to: '/supervisor/usuarios', icon: 'group', label: 'Empleados' },
   { to: '/supervisor/asignaciones', icon: 'assignment', label: 'Asignaciones' },
   { to: '/supervisor/clientes', icon: 'store', label: 'Clientes' },
+  { to: '/supervisor/reportes', icon: 'bar_chart', label: 'Reportes' },
 ];
 
 export default function SupervisorLayout() {

@@ -35,13 +35,14 @@ function RecenterMap({ center }: { center: [number, number] }) {
 interface MapPickerProps {
   value: LatLng | null;
   onChange: (pos: LatLng, address: string) => void;
+  initialCenter?: [number, number];
 }
 
-export default function MapPicker({ value, onChange }: MapPickerProps) {
+export default function MapPicker({ value, onChange, initialCenter }: MapPickerProps) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [center, setCenter] = useState<[number, number]>([-2.9, -79.0]);
+  const [center, setCenter] = useState<[number, number]>(initialCenter ?? [-2.9, -79.0]);
 
   const handlePick = async (pos: LatLng) => {
     // Reverse geocoding con Nominatim (OSM, gratis)

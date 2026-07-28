@@ -132,7 +132,7 @@ export default function EmpleadoMapa() {
                 <Polyline positions={routeCoords} color="#006a67" weight={3} dashArray="8 4" opacity={0.6} />
               )}
 
-              {/* Clientes con radio de 10m */}
+              {/* Clientes con radio de 30m */}
               {assignments.map((a, i) => (
                 <div key={a.id}>
                   <Marker position={[a.client.lat, a.client.lng]} icon={clientIcon(getColor(a), i + 1)}>
@@ -152,7 +152,7 @@ export default function EmpleadoMapa() {
                   </Marker>
                   <Circle
                     center={[a.client.lat, a.client.lng]}
-                    radius={10}
+                    radius={30}
                     pathOptions={{ color: getColor(a), fillColor: `${getColor(a)}15`, weight: 1, dashArray: '4 4' }}
                   />
                 </div>
@@ -184,7 +184,7 @@ export default function EmpleadoMapa() {
                   const dist = myPosition
                     ? Math.round(haversineDistance(myPosition.lat, myPosition.lng, a.client.lat, a.client.lng))
                     : null;
-                  const inRange = dist !== null && dist <= 300;
+                  const inRange = dist !== null && dist <= 30;
                   return (
                     <div key={a.id} className={`flex items-center gap-3 p-3 rounded-lg border ${inRange && visitStatus === 'PENDING' ? 'border-status-onsite/50 bg-status-onsite/5' : 'border-outline-variant/30 bg-surface'}`}>
                       <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: getColor(a) }}>
@@ -213,7 +213,7 @@ export default function EmpleadoMapa() {
               <div className="flex items-start gap-2">
                 <span className="material-symbols-outlined text-secondary text-lg mt-0.5">info</span>
                 <p className="text-xs text-on-surface-variant">
-                  El círculo punteado alrededor de cada cliente indica el radio de <strong>10m</strong> para verificación de llegada. Cuando estés dentro, el cliente se marcará en verde.
+                  El círculo punteado alrededor de cada cliente indica el radio de <strong>30m</strong> para verificación de llegada. Cuando estés dentro, el cliente se marcará en verde.
                 </p>
               </div>
             </div>

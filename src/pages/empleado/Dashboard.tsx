@@ -10,7 +10,7 @@ import * as attendanceApi from '../../api/attendance';
 import * as assignmentsApi from '../../api/assignments';
 import * as visitsApi from '../../api/visits';
 
-const MAX_VISIT_RADIUS = 10; // metros
+const MAX_VISIT_RADIUS = 30; // metros
 
 interface Attendance {
   id: string; checkIn: string | null; checkOut: string | null;
