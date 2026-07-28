@@ -142,7 +142,8 @@ export class AttendanceService {
 
   async getTeamAttendance(date?: string, supervisorId?: string) {
     const d = date ? parseDateOnly(date) : this.todayDate();
-    const dayOfWeek = businessDayOfWeek(d);
+    // d ya está anclado como día de negocio (UTC medianoche); no volver a desplazar por zona horaria aquí.
+    const dayOfWeek = d.getUTCDay();
 
     const employees = await this.prisma.user.findMany({
       where: { role: 'EMPLEADO', active: true, ...(supervisorId ? { supervisorId } : {}) },
