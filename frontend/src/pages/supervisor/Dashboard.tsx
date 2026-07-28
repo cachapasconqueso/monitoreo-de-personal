@@ -8,7 +8,7 @@ import * as assignmentsApi from '../../api/assignments';
 import * as usersApi from '../../api/users';
 import * as visitsApi from '../../api/visits';
 import { isVisitOffSite } from '../../lib/metrics';
-import { dateOnlyToLocal } from '../../lib/date';
+import { dateOnlyToLocal, timeAgo } from '../../lib/date';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -232,13 +232,12 @@ export default function SupervisorDashboard() {
               {/* Ubicaciones en tiempo real de empleados */}
               {empLocations.map((emp) => {
                 const initials = emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-                const minsAgo = Math.round((Date.now() - new Date(emp.lastLocationAt).getTime()) / 60000);
                 return (
                   <Marker key={`e-${emp.id}`} position={[emp.lastLat, emp.lastLng]} icon={employeeIcon(initials)}>
                     <Popup>
                       <div className="text-sm">
                         <p className="font-bold text-role-supervisor">{emp.name}</p>
-                        <p className="text-gray-500 text-xs">Hace {minsAgo < 1 ? 'menos de 1 min' : `${minsAgo} min`}</p>
+                        <p className="text-gray-500 text-xs">Hace {timeAgo(emp.lastLocationAt)}</p>
                       </div>
                     </Popup>
                   </Marker>

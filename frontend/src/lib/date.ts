@@ -9,3 +9,16 @@ export function dateOnlyToLocal(value: string | Date): Date {
   const [y, m, d] = datePart.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
+
+// Formatea un instante pasado como "hace X min/h/días", subiendo de unidad
+// para no mostrar números grandes de minutos cuando alguien lleva rato sin moverse.
+export function timeAgo(from: Date | string): string {
+  const ms = Date.now() - new Date(from).getTime();
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 1) return 'menos de 1 min';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h`;
+  const days = Math.round(hours / 24);
+  return `${days} d`;
+}
