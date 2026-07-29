@@ -14,6 +14,7 @@ interface User {
 
 type RoleFilter = 'TODOS' | 'SUPERVISOR' | 'EMPLEADO';
 const emptyForm = { name: '', email: '', password: '', phone: '', role: 'EMPLEADO', supervisorId: '' };
+const emptyEditForm = { name: '', email: '', phone: '', role: 'EMPLEADO', supervisorId: '' };
 
 export default function JefeUsuarios() {
   const [users, setUsers] = useState<User[]>([]);
@@ -24,6 +25,11 @@ export default function JefeUsuarios() {
   const [showPass, setShowPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const load = () =>
     usersApi.getUsers()
@@ -62,6 +68,67 @@ export default function JefeUsuarios() {
       toast.error(e.response?.data?.message || 'Error al crear usuario');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (u: User) => {
+    setEditingUser(u);
+    setEditForm({
+      name: u.name,
+      email: u.email,
+      phone: u.phone || '',
+      role: u.role,
+      supervisorId: u.supervisedBy?.id || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    if (!editForm.name || !editForm.email) {
+      toast.error('Nombre y correo son obligatorios');
+      return;
+    }
+    if (editForm.role === 'EMPLEADO' && !editForm.supervisorId) {
+      toast.error('Debes asignar un supervisor al empleado');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone || undefined,
+        role: editForm.role,
+      };
+      if (editForm.role === 'EMPLEADO') {
+        payload.supervisorId = editForm.supervisorId;
+      } else if (editingUser.role === 'EMPLEADO') {
+        // Se está ascendiendo de empleado a supervisor: ya no depende de un supervisor.
+        payload.supervisorId = null;
+      }
+      await usersApi.updateUser(editingUser.id, payload);
+      toast.success('Usuario actualizado');
+      setEditingUser(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Error al actualizar usuario');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivatingUser) return;
+    setDeactivating(true);
+    try {
+      await usersApi.deactivateUser(deactivatingUser.id);
+      toast.success(`${deactivatingUser.name} fue eliminado del sistema`);
+      setDeactivatingUser(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Error al eliminar usuario');
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -150,6 +217,16 @@ export default function JefeUsuarios() {
             <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shrink-0 ${roleColor(u.role)}`}>
               {roleLabel(u.role)}
             </span>
+            {u.role !== 'JEFE' && (
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => openEdit(u)} className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors" title="Editar">
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                </button>
+                <button onClick={() => setDeactivatingUser(u)} className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded transition-colors" title="Eliminar">
+                  <span className="material-symbols-outlined text-lg">person_remove</span>
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {filtered.length === 0 && (
@@ -241,6 +318,106 @@ export default function JefeUsuarios() {
               <button onClick={handleSave} disabled={saving} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
                 {saving && <div className="animate-spin h-4 w-4 border-2 border-on-primary border-t-transparent rounded-full" />}
                 Crear Usuario
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar usuario */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-bold text-lg text-on-surface">Editar Usuario</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">{editingUser.name}</p>
+              </div>
+              <button onClick={() => setEditingUser(null)} className="text-on-surface-variant hover:text-on-surface">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Rol *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['SUPERVISOR', 'EMPLEADO'].map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setEditForm({ ...editForm, role: r, supervisorId: r === 'SUPERVISOR' ? '' : editForm.supervisorId })}
+                      className={`p-3 rounded-lg border-2 text-sm font-bold transition-all ${editForm.role === r ? (r === 'SUPERVISOR' ? 'border-role-supervisor bg-role-supervisor/10 text-on-surface' : 'border-secondary bg-secondary/10 text-secondary') : 'border-outline-variant text-on-surface-variant hover:border-outline'}`}
+                    >
+                      <span className="material-symbols-outlined block text-2xl mb-1">
+                        {r === 'SUPERVISOR' ? 'admin_panel_settings' : 'badge'}
+                      </span>
+                      {r === 'SUPERVISOR' ? 'Supervisor' : 'Empleado'}
+                    </button>
+                  ))}
+                </div>
+                {editingUser.role === 'EMPLEADO' && editForm.role === 'SUPERVISOR' && (
+                  <p className="text-xs text-status-late mt-1.5">⚠ Esto asciende a {editingUser.name} de empleado a supervisor</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Nombre completo *</label>
+                <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-field" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Correo electrónico *</label>
+                <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-field" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Teléfono</label>
+                <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-field" placeholder="09xxxxxxxx" />
+              </div>
+
+              {editForm.role === 'EMPLEADO' && (
+                <div>
+                  <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Supervisor *</label>
+                  <select value={editForm.supervisorId} onChange={(e) => setEditForm({ ...editForm, supervisorId: e.target.value })} className="input-field">
+                    <option value="">Seleccionar supervisor...</option>
+                    {supervisors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingUser(null)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
+                {savingEdit && <div className="animate-spin h-4 w-4 border-2 border-on-primary border-t-transparent rounded-full" />}
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar eliminación */}
+      {deactivatingUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl text-error">person_remove</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-on-surface">¿Eliminar a {deactivatingUser.name}?</h3>
+                <p className="text-xs text-on-surface-variant">Perderá acceso al sistema de inmediato</p>
+              </div>
+            </div>
+            <p className="text-sm text-on-surface-variant mb-5 bg-surface-container p-3 rounded-lg">
+              Su historial de asistencia y visitas se conserva, pero ya no podrá iniciar sesión ni aparecerá en los paneles de equipo.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeactivatingUser(null)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={handleDeactivate} disabled={deactivating} className="flex-1 bg-error text-on-error rounded-lg px-4 py-2.5 font-semibold text-sm active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+                {deactivating && <div className="animate-spin h-4 w-4 border-2 border-on-error border-t-transparent rounded-full" />}
+                Eliminar
               </button>
             </div>
           </div>

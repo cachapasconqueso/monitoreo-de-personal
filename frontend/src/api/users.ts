@@ -16,6 +16,9 @@ export const createUser = (data: object) => api.post('/users', data).then((r) =>
 export const updateUser = (id: string, data: object) =>
   api.patch(`/users/${id}`, data).then((r) => r.data);
 
+export const deactivateUser = (id: string) =>
+  api.delete(`/users/${id}`).then((r) => r.data);
+
 export const getSchedules = (employeeId: string) =>
   api.get(`/users/${employeeId}/schedules`).then((r) => r.data);
 
