@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale';
 import * as attendanceApi from '../../api/attendance';
 import * as visitsApi from '../../api/visits';
 import * as usersApi from '../../api/users';
+import * as assignmentsApi from '../../api/assignments';
 
 interface TeamMember {
   id: string;
@@ -37,6 +38,7 @@ function minutesToHM(min: number) {
 export default function JefeDashboard() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [earlyAlerts, setEarlyAlerts] = useState<EarlyAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,8 +50,9 @@ export default function JefeDashboard() {
       visitsApi.getAllVisits(today),
       usersApi.getUsers(),
       attendanceApi.getEarlyDepartures(today),
+      assignmentsApi.getAllAssignments(today),
     ])
-      .then(([t, v, u, e]) => { setTeam(t); setVisits(v); setUsers(u); setEarlyAlerts(e); })
+      .then(([t, v, u, e, a]) => { setTeam(t); setVisits(v); setUsers(u); setEarlyAlerts(e); setAssignments(a); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -57,6 +60,7 @@ export default function JefeDashboard() {
   const supervisors = users.filter((u) => u.role === 'SUPERVISOR');
   const present = team.filter((t) => t.checkIn);
   const completedVisits = visits.filter((v) => v.status === 'COMPLETED');
+  const completedAssignments = assignments.filter((a) => a.visits?.some((v: { status: string }) => v.status === 'COMPLETED'));
 
   const kpis = [
     { label: 'Total Empleados', value: employees.length, icon: 'badge', color: 'border-primary-fixed-dim' },
@@ -195,7 +199,7 @@ export default function JefeDashboard() {
             <h3 className="font-bold text-on-surface">Productividad</h3>
           </div>
           <p className="text-3xl font-mono font-bold text-status-onsite">
-            {present.length > 0 ? Math.round((completedVisits.length / Math.max(visits.length, 1)) * 100) : 0}%
+            {assignments.length > 0 ? Math.round((completedAssignments.length / assignments.length) * 100) : 0}%
           </p>
           <p className="text-xs text-on-surface-variant mt-1">Visitas completadas vs programadas</p>
         </div>
