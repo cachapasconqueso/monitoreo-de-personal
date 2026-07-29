@@ -147,6 +147,21 @@ export class UsersService {
 
   async addSchedule(requester: Requester, employeeId: string, dto: CreateWorkScheduleDto) {
     await this.assertOwnsEmployee(requester, employeeId);
+
+    // Un mismo día no puede quedar cubierto por dos bloques de horario a la vez:
+    // se quita el día nuevo de cualquier bloque existente que lo incluyera (el más
+    // reciente gana), borrando el bloque si se queda sin días.
+    const existing = await this.prisma.workSchedule.findMany({ where: { employeeId } });
+    for (const s of existing) {
+      const remainingDays = s.daysOfWeek.filter((d) => !dto.daysOfWeek.includes(d));
+      if (remainingDays.length === s.daysOfWeek.length) continue;
+      if (remainingDays.length === 0) {
+        await this.prisma.workSchedule.delete({ where: { id: s.id } });
+      } else {
+        await this.prisma.workSchedule.update({ where: { id: s.id }, data: { daysOfWeek: remainingDays } });
+      }
+    }
+
     return this.prisma.workSchedule.create({ data: { employeeId, ...dto } });
   }
 
