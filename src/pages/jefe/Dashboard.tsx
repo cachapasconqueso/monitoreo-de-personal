@@ -150,7 +150,7 @@ export default function JefeDashboard() {
                       </p>
                     )}
                   </div>
-                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite/20 text-on-surface' : m.status === 'COMPLETED' ? 'bg-surface-container text-on-surface-variant' : m.status === 'ON_LUNCH' ? 'bg-status-late/20 text-on-surface' : m.scheduledToday ? 'bg-status-absent/20 text-on-surface' : 'bg-outline-variant/20 text-on-surface-variant'}`}>
+                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite/20 text-on-surface' : m.status === 'COMPLETED' ? 'bg-surface-container text-on-surface-variant' : m.status === 'ON_LUNCH' ? 'bg-status-late/20 text-on-surface' : m.scheduledToday ? 'bg-status-absent/20 text-on-surface' : 'bg-primary-fixed-dim/40 text-on-primary-fixed-variant'}`}>
                     {m.status === 'ACTIVE' ? 'ACTIVO' : m.status === 'COMPLETED' ? 'TERMINÓ' : m.status === 'ON_LUNCH' ? 'ALMUERZO' : m.scheduledToday ? 'AUSENTE' : 'SIN HORARIO'}
                   </span>
                 </div>
