@@ -279,7 +279,7 @@ export default function SupervisorDashboard() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className={`w-2.5 h-2.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite' : m.status === 'ON_LUNCH' ? 'bg-status-late' : m.status === 'COMPLETED' ? 'bg-outline' : m.scheduledToday ? 'bg-status-absent' : 'bg-outline-variant'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-status-onsite' : m.status === 'ON_LUNCH' ? 'bg-status-late' : m.status === 'COMPLETED' ? 'bg-outline' : m.scheduledToday ? 'bg-status-absent' : 'bg-primary-fixed-dim'}`} title={!m.scheduledToday ? 'Sin horario hoy' : undefined} />
                   {m.earlyDeparture && (
                     <span className="material-symbols-outlined text-status-late text-sm" title="Salida temprana">running_with_errors</span>
                   )}
