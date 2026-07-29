@@ -89,7 +89,12 @@ export class AttendanceService {
       attendance.lunchStart,
       attendance.lunchEnd,
     );
-    const earlyDeparture = workedMinutes < this.expectedWorkMinutes(block?.startTime, block?.endTime);
+    // La "salida temprana" compara la permanencia bruta (entrada a salida) contra el
+    // horario, no las horas netas ya descontado el almuerzo: el horario tampoco descuenta
+    // almuerzo, así que comparar contra las horas netas marcaba "horas pendientes" a
+    // cualquiera que hubiera almorzado, aunque hubiera cumplido su turno completo.
+    const rawElapsedMinutes = Math.round((now.getTime() - attendance.checkIn.getTime()) / 60000);
+    const earlyDeparture = rawElapsedMinutes < this.expectedWorkMinutes(block?.startTime, block?.endTime);
 
     return this.prisma.attendance.update({
       where: { userId_date: { userId, date } },
