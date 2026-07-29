@@ -74,8 +74,8 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(Role.JEFE)
-  deactivate(@Param('id') id: string) {
-    return this.usersService.deactivate(id);
+  @Roles(Role.JEFE, Role.SUPERVISOR)
+  deactivate(@Request() req, @Param('id') id: string) {
+    return this.usersService.deactivate(req.user, id);
   }
 }
