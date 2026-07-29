@@ -14,6 +14,7 @@ interface User {
 }
 
 const emptyForm = { name: '', email: '', password: '', phone: '' };
+const emptyEditForm = { name: '', email: '', phone: '' };
 
 export default function SupervisorUsuarios() {
   const { user: me } = useAuthStore();
@@ -24,6 +25,11 @@ export default function SupervisorUsuarios() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileEmployee, setProfileEmployee] = useState<User | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deactivatingEmployee, setDeactivatingEmployee] = useState<User | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const load = () =>
     usersApi.getMyEmployees()
@@ -55,6 +61,49 @@ export default function SupervisorUsuarios() {
       toast.error(e.response?.data?.message || 'Error al crear usuario');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (emp: User) => {
+    setEditingEmployee(emp);
+    setEditForm({ name: emp.name, email: emp.email, phone: emp.phone || '' });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEmployee) return;
+    if (!editForm.name || !editForm.email) {
+      toast.error('Nombre y correo son obligatorios');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await usersApi.updateUser(editingEmployee.id, {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone || undefined,
+      });
+      toast.success('Empleado actualizado');
+      setEditingEmployee(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Error al actualizar empleado');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivatingEmployee) return;
+    setDeactivating(true);
+    try {
+      await usersApi.deactivateUser(deactivatingEmployee.id);
+      toast.success(`${deactivatingEmployee.name} fue eliminado de tu equipo`);
+      setDeactivatingEmployee(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Error al eliminar empleado');
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -113,6 +162,28 @@ export default function SupervisorUsuarios() {
                 )}
               </div>
               <span className="status-chip-onsite shrink-0">Activo</span>
+              <div className="flex items-center gap-1 shrink-0">
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); openEdit(emp); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); openEdit(emp); } }}
+                  className="p-1.5 text-on-surface-variant hover:text-role-supervisor hover:bg-role-supervisor/10 rounded transition-colors"
+                  title="Editar"
+                >
+                  <span className="material-symbols-outlined text-lg">edit</span>
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); setDeactivatingEmployee(emp); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setDeactivatingEmployee(emp); } }}
+                  className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded transition-colors"
+                  title="Eliminar"
+                >
+                  <span className="material-symbols-outlined text-lg">person_remove</span>
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -229,6 +300,75 @@ export default function SupervisorUsuarios() {
 
       {profileEmployee && (
         <EmployeeProfileModal employee={profileEmployee} onClose={() => setProfileEmployee(null)} />
+      )}
+
+      {/* Modal editar empleado */}
+      {editingEmployee && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-bold text-lg text-on-surface">Editar Empleado</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">{editingEmployee.name}</p>
+              </div>
+              <button onClick={() => setEditingEmployee(null)} className="text-on-surface-variant hover:text-on-surface transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Nombre completo *</label>
+                <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-field" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Correo electrónico *</label>
+                <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-field" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Teléfono</label>
+                <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-field" placeholder="09xxxxxxxx" />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingEmployee(null)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-60">
+                {savingEdit && <div className="animate-spin h-4 w-4 border-2 border-on-primary border-t-transparent rounded-full" />}
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar eliminación */}
+      {deactivatingEmployee && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl text-error">person_remove</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-on-surface">¿Eliminar a {deactivatingEmployee.name}?</h3>
+                <p className="text-xs text-on-surface-variant">Perderá acceso al sistema de inmediato</p>
+              </div>
+            </div>
+            <p className="text-sm text-on-surface-variant mb-5 bg-surface-container p-3 rounded-lg">
+              Su historial de asistencia y visitas se conserva, pero ya no podrá iniciar sesión ni aparecerá en tu equipo.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeactivatingEmployee(null)} className="flex-1 btn-secondary">Cancelar</button>
+              <button onClick={handleDeactivate} disabled={deactivating} className="flex-1 bg-error text-on-error rounded-lg px-4 py-2.5 font-semibold text-sm active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+                {deactivating && <div className="animate-spin h-4 w-4 border-2 border-on-error border-t-transparent rounded-full" />}
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
