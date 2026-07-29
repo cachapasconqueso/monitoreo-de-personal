@@ -125,7 +125,13 @@ export class UsersService {
     });
   }
 
-  async deactivate(id: string) {
+  async deactivate(requester: Requester, id: string) {
+    if (requester.role === 'SUPERVISOR') {
+      const target = await this.prisma.user.findUnique({ where: { id } });
+      if (!target || target.supervisorId !== requester.id) {
+        throw new ForbiddenException('Solo puedes eliminar a tus propios empleados');
+      }
+    }
     return this.prisma.user.update({ where: { id }, data: { active: false } });
   }
 
